@@ -1,56 +1,49 @@
 package com.example.mapapp
 
-import android.annotation.SuppressLint
-import android.content.pm.PackageManager
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.util.Log
-import androidx.constraintlayout.motion.widget.Debug.getLocation
-import androidx.core.app.ActivityCompat
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
-import com.example.mapapp.Utils.Urls
-import com.example.mapapp.ViewModel.MapViewModel
-import com.mapbox.mapboxsdk.Mapbox
-import com.mapbox.mapboxsdk.camera.CameraPosition
-import com.mapbox.mapboxsdk.geometry.LatLng
-import com.mapbox.mapboxsdk.maps.MapView
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
-import android.location.Address
+import android.graphics.Typeface
 import android.location.Geocoder
 import android.location.Location
 import android.location.LocationManager
-import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
+import android.util.TypedValue
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
-import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.toBitmap
-import com.example.mapapp.Models.LatLongResponse
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import com.example.mapapp.Models.NearbyResponse
-import com.example.mapapp.Utils.Helpers
-import com.example.mapapp.Utils.Helpers.isLocationEnabled
+import com.example.mapapp.Utils.Urls
+import com.example.mapapp.ViewModel.MapViewModel
 import com.example.mapapp.databinding.ActivityMainBinding
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import com.mapbox.geojson.Point
+import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.annotations.IconFactory
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
+import com.mapbox.mapboxsdk.camera.CameraPosition
+import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.geometry.LatLngBounds
 import com.mapbox.mapboxsdk.maps.MapboxMap
-import java.text.SimpleDateFormat
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Calendar
 import java.util.Locale
+
 
 class MainActivity : AppCompatActivity() {
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
 
-    private lateinit var mapView: MapView
+    //private lateinit var mapView: MapView
 
     lateinit var mapViewModel: MapViewModel
 
@@ -69,13 +62,13 @@ class MainActivity : AppCompatActivity() {
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
 
-
-        mapView = findViewById(R.id.mapView)
-        mapView.getMapAsync { map ->
+        //mapView = findViewById(R.id.mapView)
+        mainBinding.mapView.getMapAsync { map ->
 
             mapLibreMap = map
             mapLibreMap.setStyle(Urls.styleUrls)
             //map.cameraPosition = CameraPosition.Builder().target(LatLng(0.0, 0.0)).zoom(1.0).build()
+
         }
 
         getLocation()
@@ -101,7 +94,7 @@ class MainActivity : AppCompatActivity() {
             R.drawable.baseline_location_on_24,
             null
         )!!
-        val bitmapBlue = infoIconDrawable.toBitmap()
+
         val bitmapRed = infoIconDrawable
             .mutate()
             .apply { setTint(Color.RED) }
@@ -112,25 +105,17 @@ class MainActivity : AppCompatActivity() {
             val latLng = LatLng(feature.latitude, feature.longitude)
             markerPosition.add(latLng)
 
-
-            val title = feature.name
-            val time = Calendar.getInstance().time
-            val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm")
-
-
-            val dateString =
-                formatter.format(time)
-
             val icon = IconFactory.getInstance(this)
                 .fromBitmap(bitmapRed)
 
-            // Use MarkerOptions and addMarker() to add a new marker in map
             val markerOptions = MarkerOptions()
                 .position(latLng)
-                .title(dateString)
-                .snippet(title)
+                .title(feature.name)
+                .snippet("${feature.Address}, ${feature.area}, ${feature.city}\n${feature.subType}")
                 .icon(icon)
             mapLibreMap.addMarker(markerOptions)
+
+            //mapLibreMap.setOnMarkerClickListener(n)
         }
 
         mapLibreMap.getCameraForLatLngBounds(LatLngBounds.fromLatLngs(markerPosition))?.let {
@@ -140,41 +125,75 @@ class MainActivity : AppCompatActivity() {
                 .build()
             mapLibreMap.cameraPosition = newCameraPosition
         }
+
+//        var infoWindow : InfoWindow
+
+        mapLibreMap.setInfoWindowAdapter { marker ->
+
+            val infoLayout = LinearLayout(this)
+            infoLayout.orientation = LinearLayout.VERTICAL
+            infoLayout.setPadding(10, 10, 10, 10)
+            infoLayout.background = ContextCompat.getDrawable(this, R.drawable.round_corner)
+            //infoLayout.setBackgroundColor(Color.BLACK)
+            infoLayout.layoutParams =
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.MATCH_PARENT
+                )
+
+            val title = TextView(this)
+            title.text = marker.title
+            title.setTextColor(Color.WHITE)
+            title.textSize = 16F
+            title.typeface = Typeface.DEFAULT_BOLD
+            infoLayout.addView(title)
+
+            val type = TextView(this)
+            type.text = marker.snippet
+            type.setTextColor(Color.LTGRAY)
+            type.textSize = 12F
+            infoLayout.addView(type)
+
+            infoLayout
+        }
+
+        // mapLibreMap.setOnPolygonClickListener(Ma)
+
     }
 
     override fun onStart() {
         super.onStart()
-        mapView.onStart()
+        mainBinding.mapView.onStart()
     }
 
     override fun onResume() {
         super.onResume()
-        mapView.onResume()
+        mainBinding.mapView.onResume()
     }
 
     override fun onPause() {
         super.onPause()
-        mapView.onPause()
+        mainBinding.mapView.onPause()
     }
 
     override fun onStop() {
         super.onStop()
-        mapView.onStop()
+        mainBinding.mapView.onStop()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        mapView.onSaveInstanceState(outState)
+        mainBinding.mapView.onSaveInstanceState(outState)
     }
 
     override fun onLowMemory() {
         super.onLowMemory()
-        mapView.onLowMemory()
+        mainBinding.mapView.onLowMemory()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        mapView.onDestroy()
+        mainBinding.mapView.onDestroy()
     }
 
 
@@ -186,13 +205,18 @@ class MainActivity : AppCompatActivity() {
                     val location: Location? = task.result
                     if (location != null) {
                         val geocoder = Geocoder(this, Locale.getDefault())
-                        val list: List<Address> =
-                            geocoder.getFromLocation(location.latitude, location.longitude, 1)!!
+//                        val list: List<Address> =
+//                            geocoder.getFromLocation(location.latitude, location.longitude, 1)!!
+
+                        Log.d(
+                            "dataxx",
+                            "getLocation: ${location.latitude} ${location.longitude}"
+                        )
 
                         mainBinding.apply {
                             getData(
-                                list[0].longitude.toString(),
-                                list[0].latitude.toString(),
+                                location.longitude.toString(),
+                                location.latitude.toString(),
                                 "bank"
                             )
 
