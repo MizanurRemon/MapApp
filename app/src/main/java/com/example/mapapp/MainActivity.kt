@@ -18,17 +18,33 @@ import com.mapbox.mapboxsdk.maps.MapView
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.location.Address
 import android.location.Geocoder
 import android.location.Location
 import android.location.LocationManager
+import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
+import androidx.annotation.RequiresApi
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.drawable.toBitmap
+import com.example.mapapp.Models.LatLongResponse
+import com.example.mapapp.Models.NearbyResponse
 import com.example.mapapp.Utils.Helpers
 import com.example.mapapp.Utils.Helpers.isLocationEnabled
 import com.example.mapapp.databinding.ActivityMainBinding
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.mapbox.geojson.Point
+import com.mapbox.mapboxsdk.annotations.IconFactory
+import com.mapbox.mapboxsdk.annotations.MarkerOptions
+import com.mapbox.mapboxsdk.geometry.LatLngBounds
+import com.mapbox.mapboxsdk.maps.MapboxMap
+import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Calendar
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
@@ -40,6 +56,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var mainBinding: ActivityMainBinding
     private val permissionId = 2
+    private lateinit var mapLibreMap: MapboxMap
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,13 +69,14 @@ class MainActivity : AppCompatActivity() {
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
 
-       // getData("90.36668110638857", "23.83723803415923", "bank")
+        // getData("90.36668110638857", "23.83723803415923", "bank")
 
         mapView = findViewById(R.id.mapView)
         mapView.getMapAsync { map ->
-            //map.setStyle("https://demotiles.maplibre.org/style.json")
-            map.setStyle(Urls.styleUrls)
-            map.cameraPosition = CameraPosition.Builder().target(LatLng(0.0, 0.0)).zoom(1.0).build()
+
+            mapLibreMap = map
+            mapLibreMap.setStyle(Urls.styleUrls)
+            //map.cameraPosition = CameraPosition.Builder().target(LatLng(0.0, 0.0)).zoom(1.0).build()
         }
 
         getLocation()
@@ -67,9 +85,61 @@ class MainActivity : AppCompatActivity() {
     private fun getData(longitude: String, latitude: String, ptype: String) {
         mapViewModel.nearByPlaces(longitude, latitude, ptype)
         mapViewModel.nearByPlaces.observe(this, Observer {
-            Log.d("dataxx", "getData: ${it.toString()}")
+
+            loadMarkerOnMap(it)
         })
 
+    }
+
+    private fun loadMarkerOnMap(data: NearbyResponse?) {
+        Log.d("dataxx", "marker: ${data.toString()}")
+
+        val markerPosition = mutableListOf<LatLng>()
+
+        val infoIconDrawable = ResourcesCompat.getDrawable(
+            this.resources,
+            R.drawable.baseline_location_on_24,
+            null
+        )!!
+        val bitmapBlue = infoIconDrawable.toBitmap()
+        val bitmapRed = infoIconDrawable
+            .mutate()
+            .apply { setTint(Color.RED) }
+            .toBitmap()
+
+        data!!.places.forEach { feature ->
+
+            val latLng = LatLng(feature.latitude, feature.longitude)
+            markerPosition.add(latLng)
+
+
+            val title = feature.name
+            val time = Calendar.getInstance().time
+            val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm")
+
+
+            val dateString =
+                formatter.format(time)
+
+            val icon = IconFactory.getInstance(this)
+                .fromBitmap(bitmapRed)
+
+            // Use MarkerOptions and addMarker() to add a new marker in map
+            val markerOptions = MarkerOptions()
+                .position(latLng)
+                .title(dateString)
+                .snippet(title)
+                .icon(icon)
+            mapLibreMap.addMarker(markerOptions)
+        }
+
+        mapLibreMap.getCameraForLatLngBounds(LatLngBounds.fromLatLngs(markerPosition))?.let {
+            val newCameraPosition = CameraPosition.Builder()
+                .target(it.target)
+                .zoom(it.zoom - 0.5)
+                .build()
+            mapLibreMap.cameraPosition = newCameraPosition
+        }
     }
 
     override fun onStart() {
@@ -120,9 +190,16 @@ class MainActivity : AppCompatActivity() {
                             geocoder.getFromLocation(location.latitude, location.longitude, 1)!!
 
                         mainBinding.apply {
-                            getData(list[0].longitude.toString(), list[0].latitude.toString(), "bank")
+                            getData(
+                                list[0].longitude.toString(),
+                                list[0].latitude.toString(),
+                                "bank"
+                            )
 
-                            Log.d("dataxx", "getLocation: ${list[0].longitude.toString()} ${list[0].latitude.toString()}")
+                            Log.d(
+                                "dataxx",
+                                "getLocation: ${list[0].longitude.toString()} ${list[0].latitude.toString()}"
+                            )
                         }
                     }
                 }
