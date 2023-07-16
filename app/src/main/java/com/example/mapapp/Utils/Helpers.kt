@@ -5,31 +5,43 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import androidx.core.app.ActivityCompat
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.drawable.toBitmap
+import com.example.mapapp.R
+import com.mapbox.mapboxsdk.annotations.Icon
+import com.mapbox.mapboxsdk.annotations.IconFactory
+import kotlin.math.roundToInt
 
 
 object Helpers {
+    fun generateIcon(color: Int, context: Context): Icon? {
+        val infoIconDrawable = ResourcesCompat.getDrawable(
+            context.resources,
+            R.drawable.baseline_location_on_24,
+            null
+        )!!
 
-    public fun isLocationEnabled(context: Context): Boolean {
-        val locationManager: LocationManager =
-            context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(
-            LocationManager.NETWORK_PROVIDER
-        )
+        val bitmap = infoIconDrawable
+            .mutate()
+            .apply { setTint(color) }
+            .toBitmap()
+
+        return IconFactory.getInstance(context)
+            .fromBitmap(bitmap)
+
     }
 
-    public fun checkPermissions(context: Context): Boolean {
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED &&
-            ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            return true
+    fun calculateDistance(distanceInMeters: Double): String {
+
+        var text: String
+
+        if (distanceInMeters > 1000) {
+            text = "${((distanceInMeters / 1000).roundToInt()).toString()}km away"
+        } else {
+            text = "${distanceInMeters.roundToInt().toString()}m away"
         }
-        return false
+
+        return text
     }
 
 }

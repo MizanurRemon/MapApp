@@ -7,37 +7,33 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
-import android.location.Geocoder
 import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
-import android.util.TypedValue
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.res.ResourcesCompat
-import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.example.mapapp.Models.NearbyResponse
+import com.example.mapapp.Utils.Helpers.calculateDistance
+import com.example.mapapp.Utils.Helpers.generateIcon
 import com.example.mapapp.Utils.Urls
 import com.example.mapapp.ViewModel.MapViewModel
 import com.example.mapapp.databinding.ActivityMainBinding
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.mapbox.mapboxsdk.Mapbox
-import com.mapbox.mapboxsdk.annotations.IconFactory
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
 import com.mapbox.mapboxsdk.camera.CameraPosition
 import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.geometry.LatLngBounds
 import com.mapbox.mapboxsdk.maps.MapboxMap
-import java.util.Locale
 
 
 class MainActivity : AppCompatActivity() {
@@ -51,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private val permissionId = 2
     private lateinit var mapLibreMap: MapboxMap
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Mapbox.getInstance(this)
@@ -58,64 +55,59 @@ class MainActivity : AppCompatActivity() {
         mainBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(mainBinding.root)
 
-        mapViewModel = ViewModelProvider(this)[MapViewModel::class.java]
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        initView()
 
-
-        //mapView = findViewById(R.id.mapView)
         mainBinding.mapView.getMapAsync { map ->
 
             mapLibreMap = map
             mapLibreMap.setStyle(Urls.styleUrls)
-            //map.cameraPosition = CameraPosition.Builder().target(LatLng(0.0, 0.0)).zoom(1.0).build()
 
         }
 
         getLocation()
     }
 
+    private fun initView() {
+        mapViewModel = ViewModelProvider(this)[MapViewModel::class.java]
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+    }
+
     private fun getData(longitude: String, latitude: String, ptype: String) {
         mapViewModel.nearByPlaces(longitude, latitude, ptype)
         mapViewModel.nearByPlaces.observe(this, Observer {
 
-            loadMarkerOnMap(it)
+            loadMarkerOnMap(it, longitude, latitude)
         })
 
     }
 
     @SuppressLint("SimpleDateFormat")
-    private fun loadMarkerOnMap(data: NearbyResponse?) {
-        //Log.d("dataxx", "marker: ${data.toString()}")
+    private fun loadMarkerOnMap(data: NearbyResponse?, longitude: String, latitude: String) {
 
         val markerPosition = mutableListOf<LatLng>()
 
-        val infoIconDrawable = ResourcesCompat.getDrawable(
-            this.resources,
-            R.drawable.baseline_location_on_24,
-            null
-        )!!
-
-        val bitmapRed = infoIconDrawable
-            .mutate()
-            .apply { setTint(Color.RED) }
-            .toBitmap()
+        var latLng = LatLng(latitude.toDouble(), longitude.toDouble())
+        markerPosition.add(latLng)
+        val myMarkerOption = MarkerOptions()
+            .position(latLng)
+            .title("My Location")
+            //.snippet("loc")
+            .icon(generateIcon(Color.BLUE, applicationContext))
+        mapLibreMap.addMarker(myMarkerOption)
 
         data!!.places.forEach { feature ->
 
-            val latLng = LatLng(feature.latitude, feature.longitude)
+            latLng = LatLng(feature.latitude, feature.longitude)
             markerPosition.add(latLng)
-
-            val icon = IconFactory.getInstance(this)
-                .fromBitmap(bitmapRed)
 
             val markerOptions = MarkerOptions()
                 .position(latLng)
                 .title(feature.name)
-                .snippet("${feature.Address}, ${feature.area}, ${feature.city}\n${feature.subType}")
-                .icon(icon)
+                .snippet("${feature.Address}, ${feature.area}, ${feature.city}\n${feature.subType} (${calculateDistance(feature.distance_in_meters)})")
+                .icon(generateIcon(Color.RED, applicationContext))
             mapLibreMap.addMarker(markerOptions)
 
-            //mapLibreMap.setOnMarkerClickListener(n)
         }
 
         mapLibreMap.getCameraForLatLngBounds(LatLngBounds.fromLatLngs(markerPosition))?.let {
@@ -126,7 +118,6 @@ class MainActivity : AppCompatActivity() {
             mapLibreMap.cameraPosition = newCameraPosition
         }
 
-//        var infoWindow : InfoWindow
 
         mapLibreMap.setInfoWindowAdapter { marker ->
 
@@ -157,9 +148,10 @@ class MainActivity : AppCompatActivity() {
             infoLayout
         }
 
-        // mapLibreMap.setOnPolygonClickListener(Ma)
 
     }
+
+
 
     override fun onStart() {
         super.onStart()
@@ -204,10 +196,6 @@ class MainActivity : AppCompatActivity() {
                 mFusedLocationClient.lastLocation.addOnCompleteListener(this) { task ->
                     val location: Location? = task.result
                     if (location != null) {
-                        val geocoder = Geocoder(this, Locale.getDefault())
-//                        val list: List<Address> =
-//                            geocoder.getFromLocation(location.latitude, location.longitude, 1)!!
-
                         Log.d(
                             "dataxx",
                             "getLocation: ${location.latitude} ${location.longitude}"
@@ -232,6 +220,7 @@ class MainActivity : AppCompatActivity() {
             requestPermissions()
         }
     }
+
 
     private fun isLocationEnabled(): Boolean {
         val locationManager: LocationManager =
