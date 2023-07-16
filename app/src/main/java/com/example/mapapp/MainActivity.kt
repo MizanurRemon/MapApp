@@ -69,7 +69,6 @@ class MainActivity : AppCompatActivity() {
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
 
-        // getData("90.36668110638857", "23.83723803415923", "bank")
 
         mapView = findViewById(R.id.mapView)
         mapView.getMapAsync { map ->
@@ -91,8 +90,9 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    @SuppressLint("SimpleDateFormat")
     private fun loadMarkerOnMap(data: NearbyResponse?) {
-        Log.d("dataxx", "marker: ${data.toString()}")
+        //Log.d("dataxx", "marker: ${data.toString()}")
 
         val markerPosition = mutableListOf<LatLng>()
 
@@ -196,10 +196,6 @@ class MainActivity : AppCompatActivity() {
                                 "bank"
                             )
 
-                            Log.d(
-                                "dataxx",
-                                "getLocation: ${list[0].longitude.toString()} ${list[0].latitude.toString()}"
-                            )
                         }
                     }
                 }
